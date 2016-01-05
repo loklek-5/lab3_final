@@ -18,8 +18,9 @@ import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.Observable;
 
-
-
+/**
+ *SIPClient the main SIP functions
+ **/
 
 
 class SIPClient extends Observable implements SipListener{
@@ -49,6 +50,7 @@ class SIPClient extends Observable implements SipListener{
  	HashMap<String, String> contacts = new HashMap<String, String>();
  	FileInputStream fis;
  	Player playMP3;
+
  	// SIP Object manages SIP communications 
 	//sipAddress, address in sip format (sip:user:password@host:port)
 	//The host or IP to which the application should listen
@@ -67,8 +69,9 @@ class SIPClient extends Observable implements SipListener{
 			if (null != mySIPURI.getUserPassword()) { 
  				myPassword = mySIPURI.getUserPassword(); 
 				mySIPURI.setUserPassword(null); 
-			}else{ 
- 			myPassword = null; 
+			} 
+			else { 
+ 				myPassword = null; 
  			}
  			Properties properties = new Properties();
  			properties.setProperty("javax.sip.STACK_NAME", "SIPManager");
@@ -76,73 +79,60 @@ class SIPClient extends Observable implements SipListener{
  			int listenPort; 
  			if (mySIPURI.getPort() > 0) {
  				listenPort = mySIPURI.getPort();
- 			}else {
+ 			}
+ 			else {
  				listenPort = 5060;
  			}
  			if (null == listenHost) { 
  				listenHost = mySIPURI.getHost();
  				
 			}
- 				ListeningPoint listeningPointTCP = sipStack.createListeningPoint(listenHost, listenPort, "tcp"); 
- 				ListeningPoint listeningPointUDP = sipStack.createListeningPoint(listenHost, listenPort, "udp"); 
- 				sipProvider = sipStack.createSipProvider(listeningPointTCP); 
-				sipProvider.addListeningPoint(listeningPointUDP); 
-				sipProvider.addSipListener(this); 
- 				headerFactory = sipFactory.createHeaderFactory(); 
- 				messageFactory = sipFactory.createMessageFactory(); 
- 				isInACall = false; 
- 				//appGUI = caller; 
- 			} catch (Exception e) { 
- 				e.printStackTrace(); 
- 				System.exit(1); 
- 			} 
+			ListeningPoint listeningPointTCP = sipStack.createListeningPoint(listenHost, listenPort, "tcp"); 
+			ListeningPoint listeningPointUDP = sipStack.createListeningPoint(listenHost, listenPort, "udp"); 
+			sipProvider = sipStack.createSipProvider(listeningPointTCP); 
+			sipProvider.addListeningPoint(listeningPointUDP); 
+			sipProvider.addSipListener(this); 
+			headerFactory = sipFactory.createHeaderFactory(); 
+			messageFactory = sipFactory.createMessageFactory(); 
+			isInACall = false; 
+			//appGUI = caller; 
+		} 
+		catch (Exception e) { 
+			e.printStackTrace(); 
+			System.exit(1); 
+		} 
  	}
- 	void sendREGISTER(String registrar, int registrarPort,String registrarTransport){
- 		try { 
- 			CallIdHeader callIdHeader = sipProvider.getNewCallId();
- 			//CSEQHeader field  
- 			CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.REGISTER);
- 			
- 			//we register our address 
- 			Address addressToRegister = addressFactory.createAddress("sip:lokmane@sip.linphone.org");
- 			//toheader field  with our address 
- 			ToHeader toHeader = headerFactory.createToHeader(addressToRegister,null);
- 			//fromheader field  
- 			FromHeader fromHeader = headerFactory.createFromHeader(addressToRegister, SIPUtils.randomTag());
- 			//Max number of hops to reach the destination 
- 			MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
- 			ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(registrarTransport).getPort(),registrarTransport, null); 
- 			List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>(); 
- 			viaHeaders.add(viaHeader);
- 			ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI));
- 			//finally we create our regisration request
- 			Request request = messageFactory.createRequest(addressFactory.createURI("sip:" + registrar),Request.REGISTER, callIdHeader, cSeqHeader, fromHeader, 
- 			toHeader, viaHeaders, maxForwardsHeader);
- 			request.addHeader(contactHeader);
- 			System.out.println(request);
- 			//curent transaction
- 			currentCT = sipProvider.getNewClientTransaction(request); 
- 			//we send the request
- 			currentCT.sendRequest();
- 			}catch (Exception e) { 
- 				e.printStackTrace(); 
- 				System.exit(1); 
- 			} 	
- 		} 
- 		
+ 	
+ 	/**
+	 * Sends a SIP cancel function
+	 * 
+	 */	
  	void sendCANCEL() {
  		try {
  			Request request = currentCT.createCancel();
  			sipProvider.sendRequest(request);
- 			} catch (SipException e) { 
- 				e.printStackTrace();
- 				System.exit(1);
- 				} 
+		} 
+		catch (SipException e) { 
+			e.printStackTrace();
+			System.exit(1);
+		} 
  	}
+
+ 	/**
+	 * Sets the ReplyToCall class variable to true or false
+	 * 
+	 * @param reply
+	 *            reply or not
+	 */
+
  	void acceptINVITE(boolean reply) {
- 		replyToCall = reply;
- 		
+ 		replyToCall = reply;	
  	}
+
+ 	/**
+	 * Sends SIP BYE
+	 * 
+	 */	
  	void sendBYE() {
  		try { 
  			if (null != gstreamerManager)
@@ -158,99 +148,128 @@ class SIPClient extends Observable implements SipListener{
  			ClientTransaction newTransaction = sipProvider.getNewClientTransaction(request);
  			sipProvider.sendRequest(request);
  			isInACall = false; 
- 			} catch (SipException | InvalidArgumentException e) { 
+
+ 			} 
+ 			catch (SipException | InvalidArgumentException e) { 
  				e.printStackTrace(); 
- 			System.exit(1);
+ 				System.exit(1);
  			}  
  	}
  	
- 	//function used for the online status to check if the our contacts are online 
- 	void sendHEARTBEAT(String sipAddressTocheck){
+ 	/**
+	 * This function is used for the online status to check if the our contacts are online 
+	 * 
+	 * @param sipAddressTocheck
+	 *            SIP address of the chosen peer
+	 */
+
+ 	void sendHEARTBEAT(String sipAddressTocheck) {
  		try{
- 		String transport = "udp";
- 		Address toAddress = addressFactory.createAddress(sipAddressTocheck);
- 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
- 		Address fromAddress = addressFactory.createAddress(mySIPURI); 
- 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
- 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.MESSAGE);
- 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
- 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
- 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
- 		 transport, null); 
- 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
- 		viaHeaders.add(viaHeader);
- 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
- 		Request heartBeat = messageFactory.createRequest(toAddress.getURI(),Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader, 
- 		toHeader, viaHeaders, maxForwardsHeader); 
- 					String myInfo = "AREYOUALIVE";
- 					ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain");
- 					ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(myInfo.length());
- 					heartBeat.setContent(myInfo, contentTypeHeader);
- 					heartBeat.setContentLength(contentLengthHeader);
- 					currentCT = sipProvider.getNewClientTransaction(heartBeat); 
- 					System.out.println(heartBeat);
- 					currentCT.sendRequest();
- 					} catch (Exception e) {
+	 		String transport = "udp";
+	 		Address toAddress = addressFactory.createAddress(sipAddressTocheck);
+	 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
+	 		Address fromAddress = addressFactory.createAddress(mySIPURI); 
+	 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
+	 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.MESSAGE);
+	 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
+	 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
+	 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
+	 		 transport, null); 
+	 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
+	 		viaHeaders.add(viaHeader);
+	 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
+	 		Request heartBeat = messageFactory.createRequest(toAddress.getURI(),Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader, 
+	 		toHeader, viaHeaders, maxForwardsHeader); 
+
+			String myInfo = "AREYOUALIVE";
+			ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain");
+			ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(myInfo.length());
+			heartBeat.setContent(myInfo, contentTypeHeader);
+			heartBeat.setContentLength(contentLengthHeader);
+			currentCT = sipProvider.getNewClientTransaction(heartBeat); 
+			System.out.println(heartBeat);
+			currentCT.sendRequest();
+		} 
+		catch (Exception e) {
  			e.printStackTrace();
  			System.exit(1);
- 			}  
+		}  
  	}
- 	//function used to send the instant messages 
+
+ 	/**
+	 * This function is used to send the instant messages
+	 * with 2 more people, that is a total of 3 with the hist himself
+	 * 
+	 * @param sipAddressTocheck
+	 *            sipAddress of the recepting peer
+	 * @param message
+	 *            message to transmit
+	 */
  	void sendIM(String sipAddressTocheck,String message){
  		try{
- 		String transport = "udp";
- 		Address toAddress = addressFactory.createAddress(sipAddressTocheck);
- 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
- 		Address fromAddress = addressFactory.createAddress(mySIPURI);
- 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
- 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.MESSAGE);
- 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
- 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
- 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
- 		 transport, null); 
- 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
- 		viaHeaders.add(viaHeader);
- 		message = "IMM:" + user + "-->" + message;
- 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
- 		Request msg = messageFactory.createRequest(toAddress.getURI(),Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader, 
- 		toHeader, viaHeaders, maxForwardsHeader); 
- 					//String myInfo = "AREYOUALIVE";
- 					ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain");
- 					ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(message.length());
- 					msg.setContent(message, contentTypeHeader);
- 					msg.setContentLength(contentLengthHeader);
- 					currentCT = sipProvider.getNewClientTransaction(msg); 
- 					System.out.println(msg);
- 					currentCT.sendRequest();
- 					} catch (Exception e) {
+	 		String transport = "udp";
+	 		Address toAddress = addressFactory.createAddress(sipAddressTocheck);
+	 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
+	 		Address fromAddress = addressFactory.createAddress(mySIPURI);
+	 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
+	 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.MESSAGE);
+	 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
+	 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
+	 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
+	 		 transport, null); 
+	 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
+	 		viaHeaders.add(viaHeader);
+	 		message = "IMM:" + user + "-->" + message;
+	 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
+	 		Request msg = messageFactory.createRequest(toAddress.getURI(),Request.MESSAGE, callIdHeader, cSeqHeader, fromHeader, 
+	 		toHeader, viaHeaders, maxForwardsHeader); 
+			//String myInfo = "AREYOUALIVE";
+
+			ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain");
+			ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(message.length());
+			msg.setContent(message, contentTypeHeader);
+			msg.setContentLength(contentLengthHeader);
+			currentCT = sipProvider.getNewClientTransaction(msg); 
+			System.out.println(msg);
+			currentCT.sendRequest();
+		} 
+		catch (Exception e) {
  			e.printStackTrace();
  			System.exit(1);
- 			}  
+		}  
  	}
+
+ 	/**
+	 * Sends INVITE to a given address
+	 * 
+	 * @param sipAddressToCall
+	 *            SIP address to call (INVITE)
+	 */
  	void sendINVITE(String sipAddressToCall) {
  		try{
- 		String transport = "udp";
- 		Address toAddress = addressFactory.createAddress(sipAddressToCall);
- 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
- 		Address fromAddress = addressFactory.createAddress(mySIPURI); 
- 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
- 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.INVITE);
- 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
- 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
- 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
- 		 transport, null); 
- 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
- 		viaHeaders.add(viaHeader); 
- 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
- 		Request request = messageFactory.createRequest(toAddress.getURI(),Request.INVITE, callIdHeader, cSeqHeader, fromHeader, 
- 		toHeader, viaHeaders, maxForwardsHeader); 
- 		request.addHeader(contactHeader);
- 		currentCT = sipProvider.getNewClientTransaction(request);
- 		currentCT.sendRequest();
- 		} catch (Exception e) {
+	 		String transport = "udp";
+	 		Address toAddress = addressFactory.createAddress(sipAddressToCall);
+	 		ToHeader toHeader = headerFactory.createToHeader(toAddress, null); 
+	 		Address fromAddress = addressFactory.createAddress(mySIPURI); 
+	 		FromHeader fromHeader = headerFactory.createFromHeader(fromAddress,SIPUtils.randomTag());
+	 		CSeqHeader cSeqHeader = headerFactory.createCSeqHeader(SIPUtils.randomCSeq(), Request.INVITE);
+	 		CallIdHeader callIdHeader = sipProvider.getNewCallId();
+	 		MaxForwardsHeader maxForwardsHeader = headerFactory.createMaxForwardsHeader(70);
+	 		ViaHeader viaHeader = headerFactory.createViaHeader(mySIPURI.getHost(), sipProvider.getListeningPoint(transport).getPort(),
+	 		 transport, null); 
+	 		List<ViaHeader> viaHeaders = new ArrayList<ViaHeader>();
+	 		viaHeaders.add(viaHeader); 
+	 		ContactHeader contactHeader = headerFactory.createContactHeader(fromAddress); 
+	 		Request request = messageFactory.createRequest(toAddress.getURI(),Request.INVITE, callIdHeader, cSeqHeader, fromHeader, 
+	 		toHeader, viaHeaders, maxForwardsHeader); 
+	 		request.addHeader(contactHeader);
+	 		currentCT = sipProvider.getNewClientTransaction(request);
+	 		currentCT.sendRequest();
+ 		}
+ 		catch (Exception e) {
  			e.printStackTrace();
  			System.exit(1);
- 			} 
+		} 
  	}
 
 
@@ -265,101 +284,117 @@ class SIPClient extends Observable implements SipListener{
 	@Override 
 	public void processTimeout(TimeoutEvent timeoutEvent) { 
 	}
+
+	/**
+	 * Processes the response from another peer and act accordingly
+	 * 
+	 * @param responseEvent
+	 *			reesponse event to which we react
+	 */
 	@Override
 	public void processResponse(ResponseEvent responseEvent) { 
-	int statusCode = responseEvent.getResponse().getStatusCode();
-	System.out.println(statusCode);
-	String method = responseEvent.getClientTransaction().getRequest().getMethod(); 
-	if (statusCode == Response.UNAUTHORIZED) {
-		System.out.println("juste apres");
-		Response reponse = responseEvent.getResponse();
-		System.out.println(reponse);
-		//if (null != responseEvent.getResponse().getHeader("WWW­-Authenticate")) {
-		try {
-			if (null == currentCT.getDialog()){
-				currentCT.terminate();
-			}
-			else{ 
-				currentCT.getDialog().delete();
-			}
-			Request original = responseEvent.getClientTransaction().getRequest(); 
- 			//System.out.println(responseEvent.getResponse());
-			WWWAuthenticateHeader authHeader =(WWWAuthenticateHeader) responseEvent.getResponse().getHeader("WWW-Authenticate");
-			//System.out.println(authHeader);
-			String scheme = authHeader.getScheme();
-			//System.out.println(scheme);
-			AuthorizationHeader authorizationHeader = headerFactory.createAuthorizationHeader(scheme);
-			System.out.println(authorizationHeader);
-			authorizationHeader.setUsername(mySIPURI.getUser()); 
- 			authorizationHeader.setRealm(authHeader.getRealm()); 
-			authorizationHeader.setNonce(authHeader.getNonce()); 
- 			authorizationHeader.setAlgorithm("MD5"); 
- 			
-			
- 			authorizationHeader.setURI(addressFactory.createURI("sip:lokmane@sip.linphone.org")); 
- 			//System.out.println(authorizationHeader);
- 			//mySIPURI= SipURI("sip:lokmane@sip.linphone.org");
- 			String hash1 = SIPUtils.md5string(String.format("%s:%s:%s", "lokmane",authHeader.getRealm(),"Lokmane"));
-			String hash2 = SIPUtils.md5string(String.format("%s:%s", original.getMethod(), original.getRequestURI().toString())); 
-			System.out.println(authHeader.getNonce());
-			//System.out.println(hash2);
-			String response = null;
-			if (null != authHeader.getQop()&& authHeader.getQop().equals("auth")) { 
- 				String finalStr = String.format("%s:%s:%s:%s:%s:%s",hash1,authHeader.getNonce(),"nonceCount","cNone",authHeader.getQop(),hash2) ; 
- 				System.out.println(finalStr); 
- 				response = SIPUtils.md5string(finalStr);
- 				//System.exit(1); // TODO: implement this authorization
- 			} else {
- 				response = SIPUtils.md5string(String.format("%s:%s:%s", hash1,authHeader.getNonce(),hash2)); 
+		int statusCode = responseEvent.getResponse().getStatusCode();
+		System.out.println(statusCode);
+		String method = responseEvent.getClientTransaction().getRequest().getMethod(); 
+		if (statusCode == Response.UNAUTHORIZED) {
+			System.out.println("juste apres");
+			Response reponse = responseEvent.getResponse();
+			System.out.println(reponse);
+			//if (null != responseEvent.getResponse().getHeader("WWW­-Authenticate")) {
+			try {
+				if (null == currentCT.getDialog()){
+					currentCT.terminate();
+				}
+				else{ 
+					currentCT.getDialog().delete();
+				}
+
+				Request original = responseEvent.getClientTransaction().getRequest(); 
+	 			//System.out.println(responseEvent.getResponse());
+				WWWAuthenticateHeader authHeader =(WWWAuthenticateHeader) responseEvent.getResponse().getHeader("WWW-Authenticate");
+				//System.out.println(authHeader);
+				String scheme = authHeader.getScheme();
+				//System.out.println(scheme);
+				AuthorizationHeader authorizationHeader = headerFactory.createAuthorizationHeader(scheme);
+				System.out.println(authorizationHeader);
+				authorizationHeader.setUsername(mySIPURI.getUser()); 
+	 			authorizationHeader.setRealm(authHeader.getRealm()); 
+				authorizationHeader.setNonce(authHeader.getNonce()); 
+	 			authorizationHeader.setAlgorithm("MD5"); 
+	 			
+				
+	 			authorizationHeader.setURI(addressFactory.createURI("sip:lokmane@sip.linphone.org")); 
+	 			//System.out.println(authorizationHeader);
+	 			//mySIPURI= SipURI("sip:lokmane@sip.linphone.org");
+	 			String hash1 = SIPUtils.md5string(String.format("%s:%s:%s", "lokmane",authHeader.getRealm(),"Lokmane"));
+				String hash2 = SIPUtils.md5string(String.format("%s:%s", original.getMethod(), original.getRequestURI().toString())); 
+				System.out.println(authHeader.getNonce());
+				//System.out.println(hash2);
+				String response = null;
+				if (null != authHeader.getQop()&& authHeader.getQop().equals("auth")) { 
+	 				String finalStr = String.format("%s:%s:%s:%s:%s:%s",hash1,authHeader.getNonce(),"nonceCount","cNone",authHeader.getQop(),hash2) ; 
+	 				System.out.println(finalStr); 
+	 				response = SIPUtils.md5string(finalStr);
+	 				//System.exit(1); // TODO: implement this authorization
+	 			} 
+	 			else {
+	 				response = SIPUtils.md5string(String.format("%s:%s:%s", hash1,authHeader.getNonce(),hash2)); 
+	 			}
+	 			
+	 			authorizationHeader.setResponse(response); 
+	 			Request request = (Request) original.clone(); 
+				request.addHeader(authorizationHeader); 
+	 			CSeqHeader cseqHeader = (CSeqHeader) request.getHeader("CSeq"); 
+	 			cseqHeader.setSeqNumber(SIPUtils.incCSeq(cseqHeader.getSeqNumber())); 
+	 			ViaHeader viaHeader = (ViaHeader) request.getHeader("Via"); 
+	 			viaHeader.setBranch(SIPUtils.randomTag());
+	 			System.out.println(request); 
+	 			currentCT = sipProvider.getNewClientTransaction(request); 
+	 			currentCT.sendRequest(); 
  			}
- 			
- 			authorizationHeader.setResponse(response); 
- 			Request request = (Request) original.clone(); 
-			request.addHeader(authorizationHeader); 
- 			CSeqHeader cseqHeader = (CSeqHeader) request.getHeader("CSeq"); 
- 			cseqHeader.setSeqNumber(SIPUtils.incCSeq(cseqHeader.getSeqNumber())); 
- 			ViaHeader viaHeader = (ViaHeader) request.getHeader("Via"); 
- 			viaHeader.setBranch(SIPUtils.randomTag());
- 			System.out.println(request); 
- 			currentCT = sipProvider.getNewClientTransaction(request); 
- 			currentCT.sendRequest(); 
- 			} catch (Exception e) { 
- 			e.printStackTrace(); 
- 			System.exit(1); 
+ 			catch (Exception e) { 
+	 			e.printStackTrace(); 
+	 			System.exit(1); 
  			} 
- 	}else if (statusCode==Response.ACCEPTED){
- 			online = true ;
- 			System.out.println(online);
- 			
- 	} else if (statusCode==Response.BUSY_HERE){
- 		try{
-			fis = new FileInputStream("../songs/busy.mp3");
-            playMP3 = new Player(fis);
+	 	}
+	 	else if (statusCode==Response.ACCEPTED){
+	 			online = true ;
+	 			System.out.println(online);	
+	 	} 
+	 	else if (statusCode==Response.BUSY_HERE){
+	 		try{
+				fis = new FileInputStream("../songs/busy.mp3");
+	            playMP3 = new Player(fis);
 
-             playMP3.play();
+	             playMP3.play();
+	        }  
+	        catch(Exception e){
+	            System.out.println(e);
+            }
+	 	}
+	 	else if (statusCode == Response.RINGING) {
 
-        }  catch(Exception e){
-             System.out.println(e);
-           }
- 	}else if (statusCode == Response.RINGING) {
  			if (method.equals(Request.INVITE)) {
- 			System.out.println("ca sonne .....");
- 			try{
+	 			System.out.println("ca sonne .....");
+	 			try {
 
-             fis = new FileInputStream("../songs/wait.mp3");
-             Player playMP3 = new Player(fis);
+	             fis = new FileInputStream("../songs/wait.mp3");
+	             Player playMP3 = new Player(fis);
 
-             playMP3.play();
+	             playMP3.play();
 
-        }  catch(Exception e){
-             System.out.println(e);
-           }
+	        	}  
+	        	catch(Exception e){
+	             System.out.println(e);
+	           	}
  			}
- 	} else if (statusCode == Response.REQUEST_TERMINATED) {
- 		if (method.equals(Request.INVITE)) {
- 			currentCT = null;
- 		}
- 	}else if (statusCode == Response.OK) {
+	 	} 
+	 	else if (statusCode == Response.REQUEST_TERMINATED) {
+	 		if (method.equals(Request.INVITE)) {
+	 			currentCT = null;
+	 		}
+	 	}
+	 	else if (statusCode == Response.OK) {
  			if (method.equals(Request.INVITE)) { 
  				try {
  					theyReplyed = true;
@@ -376,28 +411,30 @@ class SIPClient extends Observable implements SipListener{
  					currentCT = sipProvider.getNewClientTransaction(gstreamer); 
  					System.out.println(gstreamer);
  					currentCT.sendRequest(); 
- 					} catch (SipException | ParseException | InvalidArgumentException e) {
+				} 
+				catch (SipException | ParseException | InvalidArgumentException e) {
  					e.printStackTrace();
  					System.exit(1);
- 					}  
- 			} else if (method.equals(Request.MESSAGE)) {
-			System.out.println("je suis la ");
-			String theirGSInfo = new String(responseEvent.getResponse().getRawContent());
-			String theirGSHost = theirGSInfo.split(":")[0];
-			int theirGSPort = Integer.parseInt(theirGSInfo.split(":")[1]);
-			int myGSPort = mySIPURI.getPort() + 1;
-			gstreamerManager =  new GstHandler();
-			gstreamerManager.start(myGSPort,theirGSHost,theirGSPort); 
-		}
+				}  
+ 			} 
+ 			else if (method.equals(Request.MESSAGE)) {
+				//System.out.println("je suis la ");
+				String theirGSInfo = new String(responseEvent.getResponse().getRawContent());
+				String theirGSHost = theirGSInfo.split(":")[0];
+				int theirGSPort = Integer.parseInt(theirGSInfo.split(":")[1]);
+				int myGSPort = mySIPURI.getPort() + 1;
+				gstreamerManager =  new GstHandler();
+				gstreamerManager.start(myGSPort,theirGSHost,theirGSPort); 
+			}
+		} 		
 	}
- 		
- 
- // scheme... 
- 
-	//String method = responseEvent.getClientTransaction().getRequest().getMethod();  
-	//}
-}
-	 
+
+	 /**
+	 * Processes a request from another peer and act accordingly
+	 * 
+	 * @param requestEvent
+	 *			request event to which we react
+	 */
  	@Override 
  	public void processRequest(RequestEvent requestEvent) { 
  		try { 
@@ -414,7 +451,7 @@ class SIPClient extends Observable implements SipListener{
 					Response busy = messageFactory.createResponse( Response.BUSY_HERE, requestEvent.getRequest()); 
 					ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
 					serverTransaction.sendResponse(busy); 
-						currentST = serverTransaction; 
+					currentST = serverTransaction; 
 
 				} 
 				else { 
@@ -435,19 +472,15 @@ class SIPClient extends Observable implements SipListener{
 					serverTransaction.sendResponse(ringing); 
 					inviteTid = serverTransaction;
 					
+					try { 
+	             		fis = new FileInputStream("/home/lokman/M7017E-withoutCancel/songs/ring.mp3");
+	             		playMP3 = new Player(fis);
 
-					
-					try{
+	             		playMP3.play();
 
-             		fis = new FileInputStream("/home/lokman/M7017E-withoutCancel/songs/ring.mp3");
-             		playMP3 = new Player(fis);
-
-             		playMP3.play();
-             		
-
-
-        			}  catch(Exception e){
-            		 System.out.println(e);
+        			}  
+        			catch(Exception e){
+            			System.out.println(e);
            			}	
            			System.out.println(replyToCall);
            			Thread.sleep(5000);
@@ -459,60 +492,61 @@ class SIPClient extends Observable implements SipListener{
 						Thread.sleep(50); 
 					} 
 
-					if (theyCancel==false){
-					if (replyToCall) { 
+					if (theyCancel==false) {
+						if (replyToCall) { 
 
-					// Accept the INVITE. 
+							// Accept the INVITE. 
 
-						Response acceptCall; 
-						acceptCall = messageFactory.createResponse(Response.OK, requestEvent.getRequest()); 
+							Response acceptCall; 
+							acceptCall = messageFactory.createResponse(Response.OK, requestEvent.getRequest()); 
 
-						ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
+							ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
 
-						acceptCall.addHeader(contactHeader); 
+							acceptCall.addHeader(contactHeader); 
 
-						serverTransaction.sendResponse(acceptCall);  
-						currentST = serverTransaction; 
+							serverTransaction.sendResponse(acceptCall);  
+							currentST = serverTransaction; 
 
-					} else { 
+						} 
+						else { 
 
-						// Reject the INVITE. 
+							// Reject the INVITE. 
 
-						Response busy = messageFactory.createResponse( Response.BUSY_HERE, requestEvent.getRequest()); 
+							Response busy = messageFactory.createResponse( Response.BUSY_HERE, requestEvent.getRequest()); 
 
-						serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
+							serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
 
-						serverTransaction.sendResponse(busy); 
+							serverTransaction.sendResponse(busy); 
 
-						currentST = serverTransaction; 
+							currentST = serverTransaction; 
 
-						isInACall = false; 
+							isInACall = false; 
 
-					}
+						}
 					} 
 
-				replyToCall = false; 
+					replyToCall = false; 
 				}
 
-			}else if (method.equals(Request.BYE)) {
-			System.out.println("je quitte");
+			}
+			else if (method.equals(Request.BYE)) {
+				//System.out.println("je quitte");
 				if (null != gstreamerManager)
 					gstreamerManager.end();
+
 				Response bye = messageFactory.createResponse(Response.OK,requestEvent.getRequest());
 				requestEvent.getServerTransaction().sendResponse(bye);
 				try { 
 					requestEvent.getServerTransaction().terminate(); 
-					} catch (ObjectInUseException e1) { 
-						requestEvent.getServerTransaction().getDialog().delete();
-					}
-					isInACall = false; 
+				} 
+				catch (ObjectInUseException e1) { 
+					requestEvent.getServerTransaction().getDialog().delete();
+				}
+				isInACall = false; 
 
-			} else if (method.equals(Request.CANCEL)) { 
+			}
+			else if (method.equals(Request.CANCEL)) { 
 				theyCancel=true;
-				//messageFactory.createResponse(Response.REQUEST_TERMINATED, requestEvent.getRequest()); 
-				//ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
-
-					//serverTransaction.sendResponse(ringing);
 
 				currentST=requestEvent.getServerTransaction();
 				Response terminateCall = messageFactory.createResponse(Response.OK, requestEvent.getRequest());
@@ -522,80 +556,76 @@ class SIPClient extends Observable implements SipListener{
 				System.out.println(callTerminated);
 				inviteTid.sendResponse(callTerminated); 
 				System.out.println(terminateCall);
-				//ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
+
 				requestEvent.getServerTransaction().terminate();
-				//ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest());
 				
 				currentST = null;
-			}else if (method.equals(Request.MESSAGE)) {
-			String raw = new String(requestEvent.getRequest().getRawContent());
 
-			String idMsg = raw.split(":")[0];
-			if (idMsg.equals("IMM")){
-				newmessage = raw.split(":")[1];
-				hmap.put(raw.split(":")[1], raw.split("-->")[0]);
-				setChanged();
-      			notifyObservers(raw.split(":")[1]);
-				System.out.println(raw.split(":")[1]);
-				Response ackIMM = messageFactory.createResponse(Response.ACCEPTED,requestEvent.getRequest());
-				System.out.println(ackIMM);
-				ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
-				ackIMM.addHeader(contactHeader); 
-				ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
-				serverTransaction.sendResponse(ackIMM);	 
-				//System.out.println(onlineResponse);
-				
-			} else if (raw.equals("AREYOUALIVE")){
-				Response onlineResponse = messageFactory.createResponse(Response.ACCEPTED,requestEvent.getRequest());
-				System.out.println(onlineResponse);
-				ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
-				onlineResponse.addHeader(contactHeader); 
-				ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
-				serverTransaction.sendResponse(onlineResponse);	 
-				System.out.println(onlineResponse);
-				} 
-			else {
-				String theirGSHost = raw.split(":")[0]; 
-
-				int theirGSPort = Integer.parseInt(raw.split(":")[1]); 
-
-				int myGSPort = mySIPURI.getPort() + 1; 
-
-				GstHandler gstreamerManager = new GstHandler(); 
-
-				gstreamerManager.start(myGSPort, theirGSHost, theirGSPort); 
-
-				String myGSInfo = mySIPURI.getHost() + ":" + myGSPort; 
-
-
-				Response gstreamer = messageFactory.createResponse(Response.OK,requestEvent.getRequest()); 
-
-				ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain"); 
-
-				ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(myGSInfo.length()); 
-
-
-				gstreamer.setContent(myGSInfo, contentTypeHeader); 
-
-				gstreamer.setContentLength(contentLengthHeader); 
-
-				requestEvent.getServerTransaction().sendResponse(gstreamer); 
-			 
-			 	System.out.println(gstreamer); 				
 			}
+			else if (method.equals(Request.MESSAGE)) {
+				String raw = new String(requestEvent.getRequest().getRawContent());
+
+				String idMsg = raw.split(":")[0];
+
+				if (idMsg.equals("IMM")){
+					newmessage = raw.split(":")[1];
+					hmap.put(raw.split(":")[1], raw.split("-->")[0]);
+					setChanged();
+	      			notifyObservers(raw.split(":")[1]);
+					System.out.println(raw.split(":")[1]);
+					Response ackIMM = messageFactory.createResponse(Response.ACCEPTED,requestEvent.getRequest());
+					System.out.println(ackIMM);
+					ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
+					ackIMM.addHeader(contactHeader); 
+					ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
+					serverTransaction.sendResponse(ackIMM);	 
+					
+				} 
+				else if (raw.equals("AREYOUALIVE")){
+					Response onlineResponse = messageFactory.createResponse(Response.ACCEPTED,requestEvent.getRequest());
+					System.out.println(onlineResponse);
+					ContactHeader contactHeader = headerFactory.createContactHeader(addressFactory.createAddress(mySIPURI)); 
+					onlineResponse.addHeader(contactHeader); 
+					ServerTransaction serverTransaction = sipProvider.getNewServerTransaction(requestEvent.getRequest()); 
+					serverTransaction.sendResponse(onlineResponse);	 
+					System.out.println(onlineResponse);
+				} 
+				else {
+					String theirGSHost = raw.split(":")[0]; 
+
+					int theirGSPort = Integer.parseInt(raw.split(":")[1]); 
+
+					int myGSPort = mySIPURI.getPort() + 1; 
+
+					GstHandler gstreamerManager = new GstHandler(); 
+
+					gstreamerManager.start(myGSPort, theirGSHost, theirGSPort); 
+
+					String myGSInfo = mySIPURI.getHost() + ":" + myGSPort; 
 
 
+					Response gstreamer = messageFactory.createResponse(Response.OK,requestEvent.getRequest()); 
+
+					ContentTypeHeader contentTypeHeader = headerFactory.createContentTypeHeader("text", "plain"); 
+
+					ContentLengthHeader contentLengthHeader = headerFactory.createContentLengthHeader(myGSInfo.length()); 
+
+
+					gstreamer.setContent(myGSInfo, contentTypeHeader); 
+
+					gstreamer.setContentLength(contentLengthHeader); 
+
+					requestEvent.getServerTransaction().sendResponse(gstreamer); 
+				 
+				 	System.out.println(gstreamer); 				
+				}
+			}
+		}
+		catch (Exception e) { 
+				e.printStackTrace(); 
+				System.exit(1); 
 		}
 	}
-	catch (Exception e) { 
-			e.printStackTrace(); 
-			System.exit(1); 
-	}
- }
- public void changeSomething() {
-      // Notify observers of change
-      
-    }
 }
 
 
